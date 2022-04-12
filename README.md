@@ -4,5 +4,5 @@ Intake: July 2019 - June 2022
 Member:
 - Nguyen Minh Son - nguyen.shan1509@gmail.com
 - Vuong Chi Tam - tamvc93.study@gmail.com
-- 
+
 **Topic: Dynamic-link of Macro-Economic Factors in Vietnam**
