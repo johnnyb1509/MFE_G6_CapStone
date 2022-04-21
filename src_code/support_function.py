@@ -189,7 +189,7 @@ def box_plot_corr(frame_correlation, n_box = 3, title = None):
         plt.show();
     return
 
-def plotOnEvent(frame, columns):
+def plotOnEvent(frame, columns, is_lack = False):
     """plot graph on defined event
 
     Args:
@@ -200,13 +200,16 @@ def plotOnEvent(frame, columns):
     from datetime import datetime
     test = frame.copy()
     test.index = test.index.to_timestamp()
+    test = test[columns]
+    test = test.dropna()
     fig, ax = plt.subplots(figsize=(12,8))
-    ax.plot(test.index,test[columns])
+    ax.plot(test.index,test[columns].values)
     # test.plot(figsize = (12,8), ax = ax)
-    ax.axvspan(date2num(datetime(2008,1,12)), date2num(datetime(2010,6,1)), # datetime(2007,1,12)), date2num(datetime(2009,6,1)
-            label="2009 Recession", color="gray", alpha=0.3)
-    ax.axvspan(date2num(datetime(2011,5,1)), date2num(datetime(2012,7,1)),  # datetime(2010,5,1)), date2num(datetime(2011,7,1)
-            label="Sovereign Debt in Europe", color="gray", alpha=0.3)
+    if is_lack == False:
+        ax.axvspan(date2num(datetime(2008,1,12)), date2num(datetime(2010,6,1)), # datetime(2007,1,12)), date2num(datetime(2009,6,1)
+                label="2009 Recession", color="gray", alpha=0.3)
+        ax.axvspan(date2num(datetime(2011,5,1)), date2num(datetime(2012,7,1)),  # datetime(2010,5,1)), date2num(datetime(2011,7,1)
+                label="Sovereign Debt in Europe", color="gray", alpha=0.3)
     ax.axvspan(date2num(datetime(2016,1,1)), date2num(datetime(2016,12,31)), # datetime(2015,1,1)), date2num(datetime(2015,12,31)
             label="China capital ouflow", color="gray", alpha=0.3)
     ax.axvspan(date2num(datetime(2017,10,1)), date2num(datetime(2017,11,3)), # datetime(2016,10,1)), date2num(datetime(2016,11,3)
@@ -214,12 +217,106 @@ def plotOnEvent(frame, columns):
     ax.axvspan(date2num(datetime(2018,1,1)), date2num(datetime(2019,1,1)), # datetime(2017,1,1)), date2num(datetime(2018,1,1)
             label="DXY drop", color="gray", alpha=0.3)
     ax.axvspan(date2num(datetime(2019,7,6)), date2num(datetime(2021,1,13)), # datetime(2018,7,6)), date2num(datetime(2020,1,13)
-            label="2009 Recession", color="gray", alpha=0.3)
+            label="Trade War", color="gray", alpha=0.3)
     ax.axvspan(date2num(datetime(2020,12,31)), date2num(datetime(2021,12,31)), # datetime(2019,12,31)), date2num(datetime(2021,12,31)
-            label="2009 Recession", color="gray", alpha=0.3)
+            label="Covid-19", color="gray", alpha=0.3)
+    ax.axhline(color='r',linestyle='--',label='Center')
     ax.legend(columns)
     plt.show();
     return
+
+def anomaly_labeling(X, y = None, max_sample = 12, random_state = 42, is_plot = False, is_serialize = False):
+    """Basic Anomaly labeling function
+
+    Args:
+        X (Series, DataFrame, ndArray): Exogs table or array
+        y (Series, optional): Endog variable in pandas Series format. Defaults to None.
+        max_sample (int, optional): Number of sample to identify the abnormal. Defaults to 12.
+        random_state (int, optional): random seed. Defaults to 42.
+        is_plot (bool, optional): whether to plot the graph. Defaults to False.
+
+    Returns:
+        sklearn model object, array, array, dataframe: 
+    """
+    from sklearn.ensemble import IsolationForest
+
+    # check shape X
+    try:
+        X.shape[1]
+    except IndexError as e:
+        print(e)
+        X = X.reshape(-1,1) # X array contain only 1 feature
+
+    model = IsolationForest(max_samples = max_sample, random_state=random_state)
+    labels = model.fit_predict(X)
+    labels_score = model.score_samples(X)
+
+    data_test = None
+    if is_plot == True:
+        data_test = y.copy().to_frame()
+        y_name = y._name
+        data_test['labels'] = labels
+        data_test['labels_score'] = labels_score
+
+        # plot the score
+        data_test['labels_score'].plot()
+        plt.title('Anomaly Scoring based on given Exog')
+        plt.show()
+
+        print('Enter the threshold of anomaly (The lower, the more abnormal)')
+        threshold_anomaly = float(input())
+
+        data_test, anomaly_res = _relabel_(data_test, threshold_anomaly=threshold_anomaly)
+
+        import plotly.express as px
+        import plotly.graph_objects as go
+        # plot value on y-axis and date on x-axis
+        if is_serialize == True:
+            fig = px.line(data_test, x=data_test.index.to_timestamp(), y=y_name, title='UNSUPERVISED ANOMALY DETECTION')
+            # create list of outlier_dates
+            outlier_dates = data_test[data_test['anomaly'] == -1].index.to_timestamp()
+        else:
+            fig = px.line(data_test, x=data_test.index, y=y_name, title='UNSUPERVISED ANOMALY DETECTION')
+            # create list of outlier_dates
+            outlier_dates = data_test[data_test['anomaly'] == -1].index
+
+        # obtain y value of anomalies to plot
+        y_values = [data_test.loc[i][y_name] for i in outlier_dates]
+        fig.add_trace(go.Scatter(x=outlier_dates, y=y_values, mode = 'markers', 
+                        name = 'Anomaly', 
+                        marker=dict(color='red',size=10)))
+    
+        fig.show()
+
+        return model, anomaly_res, labels_score, data_test
+    else:
+        return model, labels_score
+    
+def _relabel_(data_test, threshold_anomaly):
+    """Support  for the anomaly_labeling function
+
+    Args:
+        data_test (dataframe): 
+        threshold_anomaly (float): 
+
+    Returns:
+        dataframe, array: 
+    """
+    data_test['score_binary'] = np.where(data_test['labels_score'] < threshold_anomaly, -1, 1)
+    anomaly_res = list()
+    # filter according to threshold
+    for idx, row in data_test.iterrows():
+        if row['labels'] == row['score_binary']:
+            if row['labels'] == 1:
+                anomaly_res.append(1)
+            else:
+                anomaly_res.append(-1)
+        elif row['labels'] != row['score_binary']:
+            anomaly_res.append(int(row['score_binary']))
+                            
+    data_test['anomaly'] = anomaly_res
+
+    return data_test, anomaly_res
 
 def k_cluster(dataframe, n_cluster = 3):
     """For cluster the covariance or correlation matrix
