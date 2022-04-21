@@ -160,7 +160,7 @@ def qq_plot(frame, figsize = (25,70)):
     plt.show()
     return
 
-def box_plot_corr(frame_correlation, n_box = 3):
+def box_plot_corr(frame_correlation, n_box = 3, title = None):
     import math
     columns = list(frame_correlation.columns)
     
@@ -180,8 +180,67 @@ def box_plot_corr(frame_correlation, n_box = 3):
     for list_ in list_comb:
         ax = frame_correlation[list_].plot(kind = "box", figsize=(15,8))
         ax.set_ylim(top = 1, bottom = -1)
-        ax.set_title("Correlation Character between Variables", fontsize=14)
+        if title is None:
+            ax.set_title("Correlation Character between Variables", fontsize=14)
+        else:
+            ax.set_title(title, fontsize=14)
         ax.set_ylabel('Correlation')
         ax.axhline(color='r',linestyle='--',label='Center')
         plt.show();
     return
+
+def plotOnEvent(frame, columns):
+    """plot graph on defined event
+
+    Args:
+        frame (DataFrame): frame to plot
+        columns (list): list of column to plot
+    """
+    from matplotlib.dates import date2num
+    from datetime import datetime
+    test = frame.copy()
+    test.index = test.index.to_timestamp()
+    fig, ax = plt.subplots(figsize=(12,8))
+    ax.plot(test.index,test[columns])
+    # test.plot(figsize = (12,8), ax = ax)
+    ax.axvspan(date2num(datetime(2008,1,12)), date2num(datetime(2010,6,1)), # datetime(2007,1,12)), date2num(datetime(2009,6,1)
+            label="2009 Recession", color="gray", alpha=0.3)
+    ax.axvspan(date2num(datetime(2011,5,1)), date2num(datetime(2012,7,1)),  # datetime(2010,5,1)), date2num(datetime(2011,7,1)
+            label="Sovereign Debt in Europe", color="gray", alpha=0.3)
+    ax.axvspan(date2num(datetime(2016,1,1)), date2num(datetime(2016,12,31)), # datetime(2015,1,1)), date2num(datetime(2015,12,31)
+            label="China capital ouflow", color="gray", alpha=0.3)
+    ax.axvspan(date2num(datetime(2017,10,1)), date2num(datetime(2017,11,3)), # datetime(2016,10,1)), date2num(datetime(2016,11,3)
+            label="OPEC cut oil supply", color="gray", alpha=0.3)
+    ax.axvspan(date2num(datetime(2018,1,1)), date2num(datetime(2019,1,1)), # datetime(2017,1,1)), date2num(datetime(2018,1,1)
+            label="DXY drop", color="gray", alpha=0.3)
+    ax.axvspan(date2num(datetime(2019,7,6)), date2num(datetime(2021,1,13)), # datetime(2018,7,6)), date2num(datetime(2020,1,13)
+            label="2009 Recession", color="gray", alpha=0.3)
+    ax.axvspan(date2num(datetime(2020,12,31)), date2num(datetime(2021,12,31)), # datetime(2019,12,31)), date2num(datetime(2021,12,31)
+            label="2009 Recession", color="gray", alpha=0.3)
+    ax.legend(columns)
+    plt.show();
+    return
+
+def k_cluster(dataframe, n_cluster = 3):
+    """For cluster the covariance or correlation matrix
+
+    Args:
+        dataframe (pandas df): correlation matrix
+
+    Returns:
+        data frame: [description]
+    """
+    cluster_etf = []
+    from sklearn.cluster import KMeans
+    # Clustering
+    kmeans = KMeans(n_clusters = n_cluster, random_state = 42)
+    label = kmeans.fit_predict(dataframe.values)
+    u_labels = np.unique(label)
+    
+    frame = pd.DataFrame(np.array([np.array(kmeans.labels_), np.array(dataframe.index.values)]).T, columns = ['label', 'components'])
+    
+    # print group
+    for g in np.unique(kmeans.labels_):
+        print(frame.groupby('label').get_group(g))
+    
+    return kmeans, frame
