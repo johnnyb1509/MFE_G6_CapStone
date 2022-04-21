@@ -170,7 +170,7 @@ def box_plot_corr(frame_correlation, n_box = 3):
     cache_list = list()
     for idx in range(len(columns)):
         cache_list.append(columns[idx])
-        if len(cache_list) == 3 or columns[idx] == columns[-1]:
+        if len(cache_list) == n_box or columns[idx] == columns[-1]:
             list_comb.append(cache_list)
             cache_list = list()
 
@@ -178,7 +178,7 @@ def box_plot_corr(frame_correlation, n_box = 3):
     
     # Plot boxplot
     for list_ in list_comb:
-        ax = frame_correlation[list_].plot(kind = "box", figsize=(12,8))
+        ax = frame_correlation[list_].plot(kind = "box", figsize=(15,8))
         ax.set_ylim(top = 1, bottom = -1)
         ax.set_title("Correlation Character between Variables", fontsize=14)
         ax.set_ylabel('Correlation')
