@@ -225,7 +225,8 @@ def plotOnEvent(frame, columns, is_lack = False):
     plt.show();
     return
 
-def anomaly_labeling(X, y = None, max_sample = 12, random_state = 42, is_plot = False, is_serialize = False):
+def anomaly_labeling(X, y = None, title = None, max_sample = 12, random_state = 42, 
+                     is_plot = False, is_serialize = False, is_shade = False, **kwargs):
     """Basic Anomaly labeling function
 
     Args:
@@ -271,12 +272,16 @@ def anomaly_labeling(X, y = None, max_sample = 12, random_state = 42, is_plot = 
         import plotly.express as px
         import plotly.graph_objects as go
         # plot value on y-axis and date on x-axis
+        if title is None:
+            chart_title = 'UNSUPERVISED ANOMALY DETECTION'
+        else:
+            chart_title = title
         if is_serialize == True:
-            fig = px.line(data_test, x=data_test.index.to_timestamp(), y=y_name, title='UNSUPERVISED ANOMALY DETECTION')
+            fig = px.line(data_test, x=data_test.index.to_timestamp(), y=y_name, title=chart_title)
             # create list of outlier_dates
             outlier_dates = data_test[data_test['anomaly'] == -1].index.to_timestamp()
         else:
-            fig = px.line(data_test, x=data_test.index, y=y_name, title='UNSUPERVISED ANOMALY DETECTION')
+            fig = px.line(data_test, x=data_test.index, y=y_name, title=chart_title)
             # create list of outlier_dates
             outlier_dates = data_test[data_test['anomaly'] == -1].index
 
@@ -285,7 +290,15 @@ def anomaly_labeling(X, y = None, max_sample = 12, random_state = 42, is_plot = 
         fig.add_trace(go.Scatter(x=outlier_dates, y=y_values, mode = 'markers', 
                         name = 'Anomaly', 
                         marker=dict(color='red',size=10)))
-    
+        
+        # Plot shade range ~ plt.axvspan 
+        if is_shade == True:
+            xStart = kwargs['xStart']
+            xStop = kwargs['xStop']
+            assert len(xStart) == len(xStop)
+            
+            for idx in range(len(xStart)):
+                fig.add_vrect(x0 = xStart[idx], x1 = xStop[idx], line_width=0, fillcolor="grey", opacity=0.2)
         fig.show()
 
         return model, anomaly_res, labels_score, data_test
@@ -317,27 +330,3 @@ def _relabel_(data_test, threshold_anomaly):
     data_test['anomaly'] = anomaly_res
 
     return data_test, anomaly_res
-
-def k_cluster(dataframe, n_cluster = 3):
-    """For cluster the covariance or correlation matrix
-
-    Args:
-        dataframe (pandas df): correlation matrix
-
-    Returns:
-        data frame: [description]
-    """
-    cluster_etf = []
-    from sklearn.cluster import KMeans
-    # Clustering
-    kmeans = KMeans(n_clusters = n_cluster, random_state = 42)
-    label = kmeans.fit_predict(dataframe.values)
-    u_labels = np.unique(label)
-    
-    frame = pd.DataFrame(np.array([np.array(kmeans.labels_), np.array(dataframe.index.values)]).T, columns = ['label', 'components'])
-    
-    # print group
-    for g in np.unique(kmeans.labels_):
-        print(frame.groupby('label').get_group(g))
-    
-    return kmeans, frame
