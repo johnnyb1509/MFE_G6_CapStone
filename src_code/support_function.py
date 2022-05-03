@@ -235,6 +235,8 @@ def anomaly_labeling(X, y = None, title = None, max_sample = 12, random_state = 
         max_sample (int, optional): Number of sample to identify the abnormal. Defaults to 12.
         random_state (int, optional): random seed. Defaults to 42.
         is_plot (bool, optional): whether to plot the graph. Defaults to False.
+        is_shade (bool, optional): ploting gray shape for noting the event range
+        **kwargs: Only used when is_shade == True. Accepts 2 kwargs: 'xStart' and 'xStop'
 
     Returns:
         sklearn model object, array, array, dataframe: 
@@ -291,7 +293,6 @@ def anomaly_labeling(X, y = None, title = None, max_sample = 12, random_state = 
                         name = 'Anomaly', 
                         marker=dict(color='red',size=10)))
         
-        # Plot shade range ~ plt.axvspan 
         if is_shade == True:
             xStart = kwargs['xStart']
             xStop = kwargs['xStop']
